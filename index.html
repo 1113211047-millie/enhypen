@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DARK MOON: 4K 節奏音遊</title>
+    <title>DARK MOON: 4K 節奏音遊 (長按版)</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
         body {
@@ -42,7 +42,7 @@
             box-shadow: 0 0 30px rgba(255, 77, 109, 0.25);
             overflow: hidden;
         }
-        canvas { display: block; width: 100%; height: 100%; }
+        canvas { display: block; width: 100%; height: 100%; touch-action: none; }
         #overlay {
             position: absolute;
             inset: 0;
@@ -93,10 +93,9 @@
         <div id="overlay">
             <h2 id="ov-title">4K 暗夜節奏</h2>
             <p id="ov-desc">
-                音符落到下方發光線時按下對應按鍵！<br>
-                電腦鍵盤：<span class="key-hint">D</span><span class="key-hint">F</span><span class="key-hint">J</span><span class="key-hint">K</span><br>
-                手機平板：直接點擊下方 4 個軌道<br>
-                <small style="color:#ff8fa3;">(請開啟喇叭或戴上耳機以聆聽節拍)</small>
+                短音符：落到判定線時點擊<br>
+                長條音符：<strong>按住不放</strong>直到尾巴結束！<br>
+                按鍵：<span class="key-hint">D</span><span class="key-hint">F</span><span class="key-hint">J</span><span class="key-hint">K</span> 或直接觸控軌道
             </p>
             <button id="start-btn">開始演奏</button>
         </div>
@@ -114,7 +113,7 @@
         const LANES = 4;
         const LANE_WIDTH = canvas.width / LANES;
         const HIT_Y = 440;
-        const NOTE_SPEED = 360; // pixels per second
+        const NOTE_SPEED = 360;
         const KEYS = ['d', 'f', 'j', 'k'];
         const LABELS = ['D', 'F', 'J', 'K'];
         const LANE_COLORS = ['#ff4d6d', '#ff8fa3', '#ff8fa3', '#ff4d6d'];
@@ -128,12 +127,12 @@
         let maxCombo = 0;
         let judgement = { text: '', color: '#fff', alpha: 0 };
         let lanePressed = [false, false, false, false];
+        let activeTouches = {}; // 追蹤多指觸控對應的軌道
         let scheduledStep = 0;
         const BPM = 124;
-        const STEP_TIME = 60 / BPM / 2; // eighth note duration
-        const TOTAL_STEPS = 64; // ~15.5 seconds per round
+        const STEP_TIME = 60 / BPM / 2;
+        const TOTAL_STEPS = 72;
 
-        // Web Audio API 簡易合成器（背景節拍 + 打擊音效）
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -155,24 +154,22 @@
             osc.stop(time + duration);
         }
 
-        function playHitSound(lane) {
+        function playHitSound(lane, isHold = false) {
             if (!audioCtx) return;
-            const freqs = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
-            playSynthNote(audioCtx.currentTime, freqs[lane], 0.15, 'sine', 0.22);
+            const freqs = [261.63, 329.63, 392.00, 523.25];
+            playSynthNote(audioCtx.currentTime, freqs[lane], isHold ? 0.35 : 0.15, isHold ? 'triangle' : 'sine', 0.22);
         }
 
         function scheduleBGM(elapsed) {
             const currentStep = Math.floor(elapsed / STEP_TIME);
-            const bassNotes = [110, 110, 130.81, 146.83, 98, 98, 123.47, 130.81]; // Am - C - Dm - G
+            const bassNotes = [110, 110, 130.81, 146.83, 98, 98, 123.47, 130.81];
             while (scheduledStep <= currentStep + 4 && scheduledStep < TOTAL_STEPS) {
                 const playTime = startTime + scheduledStep * STEP_TIME;
                 const audioTime = audioCtx.currentTime + (playTime - performance.now() / 1000);
                 if (audioTime >= audioCtx.currentTime) {
-                    // Kick on even steps
                     if (scheduledStep % 2 === 0) {
                         playSynthNote(audioTime, 65, 0.18, 'sine', 0.25);
                     }
-                    // Bassline
                     const noteFreq = bassNotes[Math.floor(scheduledStep / 4) % bassNotes.length];
                     playSynthNote(audioTime, noteFreq, STEP_TIME * 0.9, 'triangle', 0.1);
                 }
@@ -182,25 +179,39 @@
 
         function generateChart() {
             notes = [];
-            const leadIn = 1.6; // seconds before first note hits
-            for (let step = 0; step < TOTAL_STEPS; step++) {
-                // 創造有節奏感的譜面
-                if (step % 2 === 0 || (step % 4 === 3 && Math.random() > 0.45)) {
-                    const lane = Math.floor(Math.random() * LANES);
+            const leadIn = 1.6;
+            const laneFreeStep = [0, 0, 0, 0]; // 確保同軌道音符不會重疊
+
+            for (let step = 0; step < TOTAL_STEPS - 4; step++) {
+                if (step % 2 === 0 || (step % 4 === 3 && Math.random() > 0.5)) {
+                    const availableLanes = [0, 1, 2, 3].filter(l => step >= laneFreeStep[l]);
+                    if (availableLanes.length === 0) continue;
+
+                    const lane = availableLanes[Math.floor(Math.random() * availableLanes.length)];
+                    // 約 30% 機率生成長按滑條音符（長度 2 到 4 拍）
+                    const isHold = Math.random() < 0.3 && step < TOTAL_STEPS - 8;
+                    const holdSteps = isHold ? (Math.floor(Math.random() * 3) + 2) : 0;
+
                     notes.push({
                         lane: lane,
                         hitTime: leadIn + step * STEP_TIME,
+                        duration: holdSteps * STEP_TIME,
+                        isHold: isHold,
                         hit: false,
-                        missed: false
+                        holding: false,
+                        completed: false,
+                        missed: false,
+                        lastTickTime: 0
                     });
+
+                    laneFreeStep[lane] = step + holdSteps + 2;
                 }
             }
         }
 
-        function triggerLane(lane) {
-            if (!isPlaying) return;
+        function pressLane(lane) {
+            if (!isPlaying || lanePressed[lane]) return;
             lanePressed[lane] = true;
-            playHitSound(lane);
 
             const elapsed = performance.now() / 1000 - startTime;
             let targetNote = null;
@@ -218,6 +229,13 @@
 
             if (targetNote && minDiff <= 0.16) {
                 targetNote.hit = true;
+                playHitSound(lane, targetNote.isHold);
+
+                if (targetNote.isHold) {
+                    targetNote.holding = true;
+                    targetNote.lastTickTime = elapsed;
+                }
+
                 if (minDiff <= 0.065) {
                     score += 100 + combo * 5;
                     combo++;
@@ -229,158 +247,13 @@
                 }
                 if (combo > maxCombo) maxCombo = combo;
                 scoreEl.textContent = score;
+            } else {
+                playHitSound(lane, false);
             }
         }
 
-        function showJudgement(text, color) {
-            judgement = { text, color, alpha: 1.0 };
-        }
-
-        // 鍵盤監聽
-        window.addEventListener('keydown', e => {
-            if (e.repeat) return;
-            const idx = KEYS.indexOf(e.key.toLowerCase());
-            if (idx !== -1) triggerLane(idx);
-        });
-        window.addEventListener('keyup', e => {
-            const idx = KEYS.indexOf(e.key.toLowerCase());
-            if (idx !== -1) lanePressed[idx] = false;
-        });
-
-        // 觸控與滑鼠點擊監聽
-        function handlePointerDown(clientX) {
-            const rect = canvas.getBoundingClientRect();
-            const relX = clientX - rect.left;
-            const lane = Math.floor((relX / rect.width) * LANES);
-            if (lane >= 0 && lane < LANES) {
-                triggerLane(lane);
-                setTimeout(() => { lanePressed[lane] = false; }, 120);
-            }
-        }
-        canvas.addEventListener('touchstart', e => {
-            e.preventDefault();
-            for (const t of e.changedTouches) handlePointerDown(t.clientX);
-        }, { passive: false });
-        canvas.addEventListener('mousedown', e => handlePointerDown(e.clientX));
-
-        function updateAndDraw() {
+        function releaseLane(lane) {
+            lanePressed[lane] = false;
             if (!isPlaying) return;
-            const elapsed = performance.now() / 1000 - startTime;
-            scheduleBGM(elapsed);
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // 繪製軌道與按壓發光效果
-            for (let i = 0; i < LANES; i++) {
-                const x = i * LANE_WIDTH;
-                if (lanePressed[i]) {
-                    const grad = ctx.createLinearGradient(0, HIT_Y - 180, 0, HIT_Y + 40);
-                    grad.addColorStop(0, 'rgba(255, 77, 109, 0)');
-                    grad.addColorStop(1, 'rgba(255, 77, 109, 0.35)');
-                    ctx.fillStyle = grad;
-                    ctx.fillRect(x, HIT_Y - 180, LANE_WIDTH, 220);
-                }
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
-
-                // 判定區方框與按鍵提示
-                ctx.fillStyle = lanePressed[i] ? '#ff4d6d' : 'rgba(255, 255, 255, 0.08)';
-                ctx.fillRect(x + 6, HIT_Y - 12, LANE_WIDTH - 12, 24);
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 16px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(LABELS[i], x + LANE_WIDTH / 2, HIT_Y + 42);
-            }
-
-            // 繪製判定線
-            ctx.strokeStyle = '#ff4d6d';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(0, HIT_Y);
-            ctx.lineTo(canvas.width, HIT_Y);
-            ctx.stroke();
-            ctx.lineWidth = 1;
-
-            // 更新與繪製音符
-            let remaining = 0;
-            for (const n of notes) {
-                if (n.hit) continue;
-                const timeDiff = n.hitTime - elapsed;
-                const y = HIT_Y - timeDiff * NOTE_SPEED;
-
-                if (timeDiff < -0.16 && !n.missed) {
-                    n.missed = true;
-                    combo = 0;
-                    showJudgement('MISS', '#ef476f');
-                }
-
-                if (y < canvas.height + 30) {
-                    remaining++;
-                    if (y > -30) {
-                        const x = n.lane * LANE_WIDTH + 8;
-                        ctx.fillStyle = LANE_COLORS[n.lane];
-                        ctx.shadowColor = LANE_COLORS[n.lane];
-                        ctx.shadowBlur = 10;
-                        ctx.beginPath();
-                        ctx.roundRect(x, y - 10, LANE_WIDTH - 16, 20, 6);
-                        ctx.fill();
-                        ctx.shadowBlur = 0;
-                    }
-                }
-            }
-
-            // 繪製 COMBO 與判定文字
-            if (combo > 1) {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-                ctx.font = 'bold 28px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(`${combo} COMBO`, canvas.width / 2, 160);
-            }
-            if (judgement.alpha > 0) {
-                ctx.fillStyle = judgement.color;
-                ctx.globalAlpha = judgement.alpha;
-                ctx.font = 'bold 22px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(judgement.text, canvas.width / 2, 200);
-                ctx.globalAlpha = 1;
-                judgement.alpha -= 0.03;
-            }
-
-            // 曲目結束判定
-            if (elapsed > 1.6 + TOTAL_STEPS * STEP_TIME + 1.2 && remaining === 0) {
-                endGame();
-                return;
-            }
-
-            requestAnimationFrame(updateAndDraw);
-        }
-
-        function startGame() {
-            initAudio();
-            score = 0;
-            combo = 0;
-            maxCombo = 0;
-            scheduledStep = 0;
-            scoreEl.textContent = '0';
-            generateChart();
-            overlay.style.display = 'none';
-            startTime = performance.now() / 1000;
-            isPlaying = true;
-            updateAndDraw();
-        }
-
-        function endGame() {
-            isPlaying = false;
-            ovTitle.textContent = '演奏完成！';
-            ovDesc.innerHTML = `最終得分：<strong style="color:#ff4d6d;font-size:1.4rem;">${score}</strong><br>最高連擊：<strong>${maxCombo} COMBO</strong>`;
-            startBtn.textContent = '再玩一次';
-            overlay.style.display = 'flex';
-        }
-
-        startBtn.addEventListener('click', startGame);
-    </script>
-</body>
-</html>
+            const elapsed = performance.now() / 1000 -
