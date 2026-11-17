@@ -250,4 +250,137 @@
         // 觸控與滑鼠點擊監聽
         function handlePointerDown(clientX) {
             const rect = canvas.getBoundingClientRect();
-            const relX = client
+            const relX = clientX - rect.left;
+            const lane = Math.floor((relX / rect.width) * LANES);
+            if (lane >= 0 && lane < LANES) {
+                triggerLane(lane);
+                setTimeout(() => { lanePressed[lane] = false; }, 120);
+            }
+        }
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            for (const t of e.changedTouches) handlePointerDown(t.clientX);
+        }, { passive: false });
+        canvas.addEventListener('mousedown', e => handlePointerDown(e.clientX));
+
+        function updateAndDraw() {
+            if (!isPlaying) return;
+            const elapsed = performance.now() / 1000 - startTime;
+            scheduleBGM(elapsed);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 繪製軌道與按壓發光效果
+            for (let i = 0; i < LANES; i++) {
+                const x = i * LANE_WIDTH;
+                if (lanePressed[i]) {
+                    const grad = ctx.createLinearGradient(0, HIT_Y - 180, 0, HIT_Y + 40);
+                    grad.addColorStop(0, 'rgba(255, 77, 109, 0)');
+                    grad.addColorStop(1, 'rgba(255, 77, 109, 0.35)');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(x, HIT_Y - 180, LANE_WIDTH, 220);
+                }
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+
+                // 判定區方框與按鍵提示
+                ctx.fillStyle = lanePressed[i] ? '#ff4d6d' : 'rgba(255, 255, 255, 0.08)';
+                ctx.fillRect(x + 6, HIT_Y - 12, LANE_WIDTH - 12, 24);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(LABELS[i], x + LANE_WIDTH / 2, HIT_Y + 42);
+            }
+
+            // 繪製判定線
+            ctx.strokeStyle = '#ff4d6d';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, HIT_Y);
+            ctx.lineTo(canvas.width, HIT_Y);
+            ctx.stroke();
+            ctx.lineWidth = 1;
+
+            // 更新與繪製音符
+            let remaining = 0;
+            for (const n of notes) {
+                if (n.hit) continue;
+                const timeDiff = n.hitTime - elapsed;
+                const y = HIT_Y - timeDiff * NOTE_SPEED;
+
+                if (timeDiff < -0.16 && !n.missed) {
+                    n.missed = true;
+                    combo = 0;
+                    showJudgement('MISS', '#ef476f');
+                }
+
+                if (y < canvas.height + 30) {
+                    remaining++;
+                    if (y > -30) {
+                        const x = n.lane * LANE_WIDTH + 8;
+                        ctx.fillStyle = LANE_COLORS[n.lane];
+                        ctx.shadowColor = LANE_COLORS[n.lane];
+                        ctx.shadowBlur = 10;
+                        ctx.beginPath();
+                        ctx.roundRect(x, y - 10, LANE_WIDTH - 16, 20, 6);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            }
+
+            // 繪製 COMBO 與判定文字
+            if (combo > 1) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                ctx.font = 'bold 28px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${combo} COMBO`, canvas.width / 2, 160);
+            }
+            if (judgement.alpha > 0) {
+                ctx.fillStyle = judgement.color;
+                ctx.globalAlpha = judgement.alpha;
+                ctx.font = 'bold 22px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(judgement.text, canvas.width / 2, 200);
+                ctx.globalAlpha = 1;
+                judgement.alpha -= 0.03;
+            }
+
+            // 曲目結束判定
+            if (elapsed > 1.6 + TOTAL_STEPS * STEP_TIME + 1.2 && remaining === 0) {
+                endGame();
+                return;
+            }
+
+            requestAnimationFrame(updateAndDraw);
+        }
+
+        function startGame() {
+            initAudio();
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            scheduledStep = 0;
+            scoreEl.textContent = '0';
+            generateChart();
+            overlay.style.display = 'none';
+            startTime = performance.now() / 1000;
+            isPlaying = true;
+            updateAndDraw();
+        }
+
+        function endGame() {
+            isPlaying = false;
+            ovTitle.textContent = '演奏完成！';
+            ovDesc.innerHTML = `最終得分：<strong style="color:#ff4d6d;font-size:1.4rem;">${score}</strong><br>最高連擊：<strong>${maxCombo} COMBO</strong>`;
+            startBtn.textContent = '再玩一次';
+            overlay.style.display = 'flex';
+        }
+
+        startBtn.addEventListener('click', startGame);
+    </script>
+</body>
+</html>
