@@ -2,15 +2,259 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ENHYPEN 介紹網站</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ENHYPEN 暗夜接寶石</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background-color: #111; color: white; padding: 50px; }
-        h1 { color: #ff4d4d; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body {
+            background: radial-gradient(circle at top, #1f0a14, #09090d);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+            color: #ff4d6d;
+            text-shadow: 0 0 10px rgba(255, 77, 109, 0.7);
+            margin-bottom: 10px;
+        }
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            width: 360px;
+            max-width: 92vw;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 77, 109, 0.3);
+        }
+        #game-container {
+            position: relative;
+            width: 360px;
+            max-width: 92vw;
+            height: 500px;
+            background: rgba(15, 15, 25, 0.9);
+            border: 2px solid #ff4d6d;
+            border-radius: 12px;
+            box-shadow: 0 0 25px rgba(255, 77, 109, 0.3);
+            overflow: hidden;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+        #overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(9, 9, 13, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+        #overlay h2 { font-size: 1.8rem; color: #ff4d6d; margin-bottom: 10px; }
+        #overlay p { color: #ccc; margin-bottom: 20px; line-height: 1.6; font-size: 0.95rem; }
+        button {
+            background: linear-gradient(45deg, #ff4d6d, #c9184a);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 77, 109, 0.5);
+            transition: transform 0.1s;
+        }
+        button:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
-    <h1>歡迎來到 ENHYPEN 的世界</h1>
-    <p>這是我的第一個網頁！</p>
+
+    <h1>🦇 ENHYPEN 暗夜接寶石</h1>
+    <div class="hud">
+        <span>分數: <span id="score">0</span></span>
+        <span>生命: <span id="lives">❤️❤️❤️</span></span>
+    </div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="360" height="500"></canvas>
+        <div id="overlay">
+            <h2 id="overlay-title">準備好了嗎？</h2>
+            <p id="overlay-desc">
+                左右移動接住 💎(+10) 與 🌟(+30)<br>
+                小心避開 🧄 大蒜！<br>
+                (支援滑鼠、觸控滑動或鍵盤 ← →)
+            </p>
+            <button id="start-btn">開始遊戲</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const livesEl = document.getElementById('lives');
+        const overlay = document.getElementById('overlay');
+        const overlayTitle = document.getElementById('overlay-title');
+        const overlayDesc = document.getElementById('overlay-desc');
+        const startBtn = document.getElementById('start-btn');
+
+        let score = 0;
+        let lives = 3;
+        let gameRunning = false;
+        let items = [];
+        let spawnTimer = 0;
+        let animationId;
+
+        const player = {
+            x: canvas.width / 2 - 35,
+            y: canvas.height - 45,
+            width: 70,
+            height: 16,
+            speed: 7
+        };
+
+        const keys = { ArrowLeft: false, ArrowRight: false };
+
+        window.addEventListener('keydown', e => { if (e.key in keys) keys[e.key] = true; });
+        window.addEventListener('keyup', e => { if (e.key in keys) keys[e.key] = false; });
+
+        function movePlayerTo(clientX) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const posX = (clientX - rect.left) * scaleX;
+            player.x = Math.max(0, Math.min(canvas.width - player.width, posX - player.width / 2));
+        }
+
+        canvas.addEventListener('mousemove', e => { if (gameRunning) movePlayerTo(e.clientX); });
+        canvas.addEventListener('touchmove', e => {
+            if (gameRunning) {
+                e.preventDefault();
+                movePlayerTo(e.touches[0].clientX);
+            }
+        }, { passive: false });
+
+        function spawnItem() {
+            const rand = Math.random();
+            let type = 'gem';
+            if (rand < 0.3) type = 'garlic';
+            else if (rand > 0.85) type = 'star';
+
+            items.push({
+                x: Math.random() * (canvas.width - 30) + 15,
+                y: -20,
+                size: 26,
+                speed: 2.8 + Math.random() * 2 + (score * 0.015),
+                type: type
+            });
+        }
+
+        function update() {
+            if (keys.ArrowLeft) player.x = Math.max(0, player.x - player.speed);
+            if (keys.ArrowRight) player.x = Math.min(canvas.width - player.width, player.x + player.speed);
+
+            spawnTimer++;
+            if (spawnTimer > Math.max(22, 48 - Math.floor(score / 25))) {
+                spawnItem();
+                spawnTimer = 0;
+            }
+
+            for (let i = items.length - 1; i >= 0; i--) {
+                const item = items[i];
+                item.y += item.speed;
+
+                // 碰撞偵測
+                if (
+                    item.y + 10 >= player.y &&
+                    item.y - 10 <= player.y + player.height &&
+                    item.x >= player.x - 10 &&
+                    item.x <= player.x + player.width + 10
+                ) {
+                    if (item.type === 'gem') score += 10;
+                    else if (item.type === 'star') score += 30;
+                    else if (item.type === 'garlic') lives--;
+
+                    updateHUD();
+                    items.splice(i, 1);
+
+                    if (lives <= 0) {
+                        endGame();
+                        return;
+                    }
+                    continue;
+                }
+
+                if (item.y > canvas.height + 20) {
+                    items.splice(i, 1);
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 繪製玩家接盤
+            ctx.fillStyle = '#ff4d6d';
+            ctx.shadowColor = '#ff4d6d';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.roundRect(player.x, player.y, player.width, player.height, 8);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // 繪製掉落物
+            ctx.font = '26px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            for (const item of items) {
+                const emoji = item.type === 'gem' ? '💎' : item.type === 'star' ? '🌟' : '🧄';
+                ctx.fillText(emoji, item.x, item.y);
+            }
+        }
+
+        function loop() {
+            if (!gameRunning) return;
+            update();
+            draw();
+            animationId = requestAnimationFrame(loop);
+        }
+
+        function updateHUD() {
+            scoreEl.textContent = score;
+            livesEl.textContent = '❤️'.repeat(Math.max(0, lives));
+        }
+
+        function startGame() {
+            score = 0;
+            lives = 3;
+            items = [];
+            spawnTimer = 0;
+            player.x = canvas.width / 2 - player.width / 2;
+            updateHUD();
+            overlay.style.display = 'none';
+            gameRunning = true;
+            loop();
+        }
+
+        function endGame() {
+            gameRunning = false;
+            cancelAnimationFrame(animationId);
+            overlayTitle.textContent = '遊戲結束！';
+            overlayDesc.innerHTML = `你的最終得分是：<strong style="color:#ff4d6d;font-size:1.4rem;">${score}</strong> 分`;
+            startBtn.textContent = '再玩一次';
+            overlay.style.display = 'flex';
+        }
+
+        startBtn.addEventListener('click', startGame);
+    </script>
 </body>
 </html>
