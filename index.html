@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ENHYPEN 暗夜接寶石</title>
+    <title>DARK MOON: 4K 節奏音遊</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
         body {
-            background: radial-gradient(circle at top, #1f0a14, #09090d);
+            background: radial-gradient(circle at center, #1d0b18 0%, #08080c 100%);
             color: #fff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
@@ -17,84 +17,88 @@
             min-height: 100vh;
             overflow: hidden;
         }
-        h1 {
-            font-size: 1.5rem;
-            letter-spacing: 2px;
-            color: #ff4d6d;
-            text-shadow: 0 0 10px rgba(255, 77, 109, 0.7);
-            margin-bottom: 10px;
-        }
-        .hud {
+        .header {
+            width: 360px;
+            max-width: 95vw;
             display: flex;
             justify-content: space-between;
-            width: 360px;
-            max-width: 92vw;
-            font-size: 1.1rem;
-            font-weight: bold;
-            margin-bottom: 8px;
-            padding: 8px 15px;
-            background: rgba(255, 255, 255, 0.08);
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px 14px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 77, 109, 0.35);
             border-radius: 10px;
-            border: 1px solid rgba(255, 77, 109, 0.3);
         }
-        #game-container {
+        .title { font-weight: bold; color: #ff4d6d; letter-spacing: 1px; font-size: 1.05rem; }
+        .stats { font-size: 0.95rem; font-weight: bold; }
+        #game-box {
             position: relative;
             width: 360px;
-            max-width: 92vw;
-            height: 500px;
-            background: rgba(15, 15, 25, 0.9);
+            max-width: 95vw;
+            height: 520px;
+            background: rgba(12, 12, 18, 0.95);
             border: 2px solid #ff4d6d;
             border-radius: 12px;
-            box-shadow: 0 0 25px rgba(255, 77, 109, 0.3);
+            box-shadow: 0 0 30px rgba(255, 77, 109, 0.25);
             overflow: hidden;
         }
         canvas { display: block; width: 100%; height: 100%; }
         #overlay {
             position: absolute;
             inset: 0;
-            background: rgba(9, 9, 13, 0.85);
+            background: rgba(8, 8, 12, 0.88);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             text-align: center;
-            padding: 20px;
+            padding: 24px;
+            z-index: 10;
         }
-        #overlay h2 { font-size: 1.8rem; color: #ff4d6d; margin-bottom: 10px; }
-        #overlay p { color: #ccc; margin-bottom: 20px; line-height: 1.6; font-size: 0.95rem; }
+        #overlay h2 { font-size: 1.7rem; color: #ff4d6d; margin-bottom: 12px; }
+        #overlay p { color: #ccc; font-size: 0.92rem; line-height: 1.6; margin-bottom: 22px; }
+        .key-hint {
+            display: inline-block;
+            background: rgba(255, 77, 109, 0.2);
+            border: 1px solid #ff4d6d;
+            padding: 2px 8px;
+            border-radius: 5px;
+            color: #fff;
+            font-weight: bold;
+            margin: 0 2px;
+        }
         button {
             background: linear-gradient(45deg, #ff4d6d, #c9184a);
             color: white;
             border: none;
-            padding: 12px 30px;
+            padding: 12px 34px;
             font-size: 1.1rem;
             font-weight: bold;
             border-radius: 25px;
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(255, 77, 109, 0.5);
-            transition: transform 0.1s;
         }
-        button:active { transform: scale(0.95); }
+        button:active { transform: scale(0.96); }
     </style>
 </head>
 <body>
 
-    <h1>🦇 ENHYPEN 暗夜接寶石</h1>
-    <div class="hud">
-        <span>分數: <span id="score">0</span></span>
-        <span>生命: <span id="lives">❤️❤️❤️</span></span>
+    <div class="header">
+        <div class="title">🦇 DARK MOON RHYTHM</div>
+        <div class="stats">SCORE: <span id="score">0</span></div>
     </div>
 
-    <div id="game-container">
-        <canvas id="gameCanvas" width="360" height="500"></canvas>
+    <div id="game-box">
+        <canvas id="gameCanvas" width="360" height="520"></canvas>
         <div id="overlay">
-            <h2 id="overlay-title">準備好了嗎？</h2>
-            <p id="overlay-desc">
-                左右移動接住 💎(+10) 與 🌟(+30)<br>
-                小心避開 🧄 大蒜！<br>
-                (支援滑鼠、觸控滑動或鍵盤 ← →)
+            <h2 id="ov-title">4K 暗夜節奏</h2>
+            <p id="ov-desc">
+                音符落到下方發光線時按下對應按鍵！<br>
+                電腦鍵盤：<span class="key-hint">D</span><span class="key-hint">F</span><span class="key-hint">J</span><span class="key-hint">K</span><br>
+                手機平板：直接點擊下方 4 個軌道<br>
+                <small style="color:#ff8fa3;">(請開啟喇叭或戴上耳機以聆聽節拍)</small>
             </p>
-            <button id="start-btn">開始遊戲</button>
+            <button id="start-btn">開始演奏</button>
         </div>
     </div>
 
@@ -102,159 +106,148 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreEl = document.getElementById('score');
-        const livesEl = document.getElementById('lives');
         const overlay = document.getElementById('overlay');
-        const overlayTitle = document.getElementById('overlay-title');
-        const overlayDesc = document.getElementById('overlay-desc');
+        const ovTitle = document.getElementById('ov-title');
+        const ovDesc = document.getElementById('ov-desc');
         const startBtn = document.getElementById('start-btn');
 
+        const LANES = 4;
+        const LANE_WIDTH = canvas.width / LANES;
+        const HIT_Y = 440;
+        const NOTE_SPEED = 360; // pixels per second
+        const KEYS = ['d', 'f', 'j', 'k'];
+        const LABELS = ['D', 'F', 'J', 'K'];
+        const LANE_COLORS = ['#ff4d6d', '#ff8fa3', '#ff8fa3', '#ff4d6d'];
+
+        let audioCtx = null;
+        let isPlaying = false;
+        let startTime = 0;
+        let notes = [];
         let score = 0;
-        let lives = 3;
-        let gameRunning = false;
-        let items = [];
-        let spawnTimer = 0;
-        let animationId;
+        let combo = 0;
+        let maxCombo = 0;
+        let judgement = { text: '', color: '#fff', alpha: 0 };
+        let lanePressed = [false, false, false, false];
+        let scheduledStep = 0;
+        const BPM = 124;
+        const STEP_TIME = 60 / BPM / 2; // eighth note duration
+        const TOTAL_STEPS = 64; // ~15.5 seconds per round
 
-        const player = {
-            x: canvas.width / 2 - 35,
-            y: canvas.height - 45,
-            width: 70,
-            height: 16,
-            speed: 7
-        };
-
-        const keys = { ArrowLeft: false, ArrowRight: false };
-
-        window.addEventListener('keydown', e => { if (e.key in keys) keys[e.key] = true; });
-        window.addEventListener('keyup', e => { if (e.key in keys) keys[e.key] = false; });
-
-        function movePlayerTo(clientX) {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const posX = (clientX - rect.left) * scaleX;
-            player.x = Math.max(0, Math.min(canvas.width - player.width, posX - player.width / 2));
+        // Web Audio API 簡易合成器（背景節拍 + 打擊音效）
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        canvas.addEventListener('mousemove', e => { if (gameRunning) movePlayerTo(e.clientX); });
-        canvas.addEventListener('touchmove', e => {
-            if (gameRunning) {
-                e.preventDefault();
-                movePlayerTo(e.touches[0].clientX);
-            }
-        }, { passive: false });
-
-        function spawnItem() {
-            const rand = Math.random();
-            let type = 'gem';
-            if (rand < 0.3) type = 'garlic';
-            else if (rand > 0.85) type = 'star';
-
-            items.push({
-                x: Math.random() * (canvas.width - 30) + 15,
-                y: -20,
-                size: 26,
-                speed: 2.8 + Math.random() * 2 + (score * 0.015),
-                type: type
-            });
+        function playSynthNote(time, freq, duration, type = 'triangle', gainVal = 0.15) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, time);
+            gain.gain.setValueAtTime(gainVal, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(time);
+            osc.stop(time + duration);
         }
 
-        function update() {
-            if (keys.ArrowLeft) player.x = Math.max(0, player.x - player.speed);
-            if (keys.ArrowRight) player.x = Math.min(canvas.width - player.width, player.x + player.speed);
+        function playHitSound(lane) {
+            if (!audioCtx) return;
+            const freqs = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+            playSynthNote(audioCtx.currentTime, freqs[lane], 0.15, 'sine', 0.22);
+        }
 
-            spawnTimer++;
-            if (spawnTimer > Math.max(22, 48 - Math.floor(score / 25))) {
-                spawnItem();
-                spawnTimer = 0;
-            }
-
-            for (let i = items.length - 1; i >= 0; i--) {
-                const item = items[i];
-                item.y += item.speed;
-
-                // 碰撞偵測
-                if (
-                    item.y + 10 >= player.y &&
-                    item.y - 10 <= player.y + player.height &&
-                    item.x >= player.x - 10 &&
-                    item.x <= player.x + player.width + 10
-                ) {
-                    if (item.type === 'gem') score += 10;
-                    else if (item.type === 'star') score += 30;
-                    else if (item.type === 'garlic') lives--;
-
-                    updateHUD();
-                    items.splice(i, 1);
-
-                    if (lives <= 0) {
-                        endGame();
-                        return;
+        function scheduleBGM(elapsed) {
+            const currentStep = Math.floor(elapsed / STEP_TIME);
+            const bassNotes = [110, 110, 130.81, 146.83, 98, 98, 123.47, 130.81]; // Am - C - Dm - G
+            while (scheduledStep <= currentStep + 4 && scheduledStep < TOTAL_STEPS) {
+                const playTime = startTime + scheduledStep * STEP_TIME;
+                const audioTime = audioCtx.currentTime + (playTime - performance.now() / 1000);
+                if (audioTime >= audioCtx.currentTime) {
+                    // Kick on even steps
+                    if (scheduledStep % 2 === 0) {
+                        playSynthNote(audioTime, 65, 0.18, 'sine', 0.25);
                     }
-                    continue;
+                    // Bassline
+                    const noteFreq = bassNotes[Math.floor(scheduledStep / 4) % bassNotes.length];
+                    playSynthNote(audioTime, noteFreq, STEP_TIME * 0.9, 'triangle', 0.1);
                 }
+                scheduledStep++;
+            }
+        }
 
-                if (item.y > canvas.height + 20) {
-                    items.splice(i, 1);
+        function generateChart() {
+            notes = [];
+            const leadIn = 1.6; // seconds before first note hits
+            for (let step = 0; step < TOTAL_STEPS; step++) {
+                // 創造有節奏感的譜面
+                if (step % 2 === 0 || (step % 4 === 3 && Math.random() > 0.45)) {
+                    const lane = Math.floor(Math.random() * LANES);
+                    notes.push({
+                        lane: lane,
+                        hitTime: leadIn + step * STEP_TIME,
+                        hit: false,
+                        missed: false
+                    });
                 }
             }
         }
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function triggerLane(lane) {
+            if (!isPlaying) return;
+            lanePressed[lane] = true;
+            playHitSound(lane);
 
-            // 繪製玩家接盤
-            ctx.fillStyle = '#ff4d6d';
-            ctx.shadowColor = '#ff4d6d';
-            ctx.shadowBlur = 12;
-            ctx.beginPath();
-            ctx.roundRect(player.x, player.y, player.width, player.height, 8);
-            ctx.fill();
-            ctx.shadowBlur = 0;
+            const elapsed = performance.now() / 1000 - startTime;
+            let targetNote = null;
+            let minDiff = Infinity;
 
-            // 繪製掉落物
-            ctx.font = '26px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            for (const item of items) {
-                const emoji = item.type === 'gem' ? '💎' : item.type === 'star' ? '🌟' : '🧄';
-                ctx.fillText(emoji, item.x, item.y);
+            for (const n of notes) {
+                if (!n.hit && !n.missed && n.lane === lane) {
+                    const diff = Math.abs(n.hitTime - elapsed);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        targetNote = n;
+                    }
+                }
+            }
+
+            if (targetNote && minDiff <= 0.16) {
+                targetNote.hit = true;
+                if (minDiff <= 0.065) {
+                    score += 100 + combo * 5;
+                    combo++;
+                    showJudgement('PERFECT!', '#ffd166');
+                } else {
+                    score += 50 + combo * 2;
+                    combo++;
+                    showJudgement('GOOD', '#06d6a0');
+                }
+                if (combo > maxCombo) maxCombo = combo;
+                scoreEl.textContent = score;
             }
         }
 
-        function loop() {
-            if (!gameRunning) return;
-            update();
-            draw();
-            animationId = requestAnimationFrame(loop);
+        function showJudgement(text, color) {
+            judgement = { text, color, alpha: 1.0 };
         }
 
-        function updateHUD() {
-            scoreEl.textContent = score;
-            livesEl.textContent = '❤️'.repeat(Math.max(0, lives));
-        }
+        // 鍵盤監聽
+        window.addEventListener('keydown', e => {
+            if (e.repeat) return;
+            const idx = KEYS.indexOf(e.key.toLowerCase());
+            if (idx !== -1) triggerLane(idx);
+        });
+        window.addEventListener('keyup', e => {
+            const idx = KEYS.indexOf(e.key.toLowerCase());
+            if (idx !== -1) lanePressed[idx] = false;
+        });
 
-        function startGame() {
-            score = 0;
-            lives = 3;
-            items = [];
-            spawnTimer = 0;
-            player.x = canvas.width / 2 - player.width / 2;
-            updateHUD();
-            overlay.style.display = 'none';
-            gameRunning = true;
-            loop();
-        }
-
-        function endGame() {
-            gameRunning = false;
-            cancelAnimationFrame(animationId);
-            overlayTitle.textContent = '遊戲結束！';
-            overlayDesc.innerHTML = `你的最終得分是：<strong style="color:#ff4d6d;font-size:1.4rem;">${score}</strong> 分`;
-            startBtn.textContent = '再玩一次';
-            overlay.style.display = 'flex';
-        }
-
-        startBtn.addEventListener('click', startGame);
-    </script>
-</body>
-</html>
+        // 觸控與滑鼠點擊監聽
+        function handlePointerDown(clientX) {
+            const rect = canvas.getBoundingClientRect();
+            const relX = client
